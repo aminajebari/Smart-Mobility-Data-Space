@@ -1,0 +1,24 @@
+providers:
+  traffic_sensor_1:
+    type: traffic_sensor
+    location: [36.8065, 10.1815]
+    rate_seconds: 5
+
+  bus_line_12:
+    type: public_transport
+    route_id: "L12"
+    stops: [[36.8065, 10.1815], [36.8100, 10.1850], [36.8140, 10.1900]]
+    rate_seconds: 10
+
+  parking_lot_5:
+    type: smart_parking
+    location: [36.8000, 10.1800]
+    capacity: 120
+    rate_seconds: 15
+
+  bikes_zone_a:
+    type: shared_mobility
+    zone_center: [36.8050, 10.1830]
+    zone_radius_km: 1.5
+    fleet_size: 25
+    rate_seconds: 10
