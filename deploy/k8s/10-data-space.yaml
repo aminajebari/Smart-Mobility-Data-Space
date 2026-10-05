@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dataspace-db
+  namespace: smart-mobility
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-space
+  namespace: smart-mobility
+  labels: {app: data-space, tier: governance}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}  # single SQLite writer
+  selector:
+    matchLabels: {app: data-space}
+  template:
+    metadata:
+      labels: {app: data-space, tier: governance}
+    spec:
+      volumes:
+        - name: db
+          persistentVolumeClaim: {claimName: dataspace-db}
+      containers:
+        - name: data-space
+          image: smds/data-space:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8010
+          env:
+            - {name: DATA_SPACE_DB, value: /data/dataspace.db}
+            - name: DATA_SPACE_SERVICE_TOKEN
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: DATA_SPACE_SERVICE_TOKEN}}
+          volumeMounts:
+            - {name: db, mountPath: /data}
+          readinessProbe:
+            httpGet: {path: /health, port: 8010}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8010}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-space
+  namespace: smart-mobility
+spec:
+  selector: {app: data-space}
+  ports:
+    - port: 8010
+      targetPort: 8010
