@@ -1,0 +1,68 @@
+# Partner registry of the Smart Mobility Data Space.
+# Each participant is a legal entity (simulated) that joined the data space.
+# membership: "member" = signed the data space rulebook, "guest" = discovery only.
+
+participants:
+  - id: traffic_sensor_1
+    name: Urban Traffic Sensors
+    organization: Tunis Traffic Authority (simulated)
+    type: provider
+    membership: member
+    roles: [provider, traffic_operator]
+    country: TN
+
+  - id: bus_line_12
+    name: Tunis Bus Network - Line 12
+    organization: Public Transport Operator (simulated)
+    type: provider
+    membership: member
+    roles: [provider, transport_operator]
+    country: TN
+
+  - id: parking_lot_5
+    name: Smart Parking Lot 5
+    organization: City Parking Services (simulated)
+    type: provider
+    membership: member
+    roles: [provider, parking_operator]
+    country: TN
+
+  - id: bikes_zone_a
+    name: Shared Bikes - Zone A
+    organization: Micro-Mobility Operator (simulated)
+    type: provider
+    membership: member
+    roles: [provider, micromobility_operator]
+    country: TN
+
+  - id: edge_node_1
+    name: Edge AI Node 1
+    organization: Tunis Traffic Authority (simulated)
+    type: consumer
+    membership: member
+    roles: [edge_ai, analytics]
+    country: TN
+
+  - id: dashboard_operator
+    name: Mobility Operations Center
+    organization: City of Tunis (simulated)
+    type: consumer
+    membership: member
+    roles: [operator, monitoring]
+    country: TN
+
+  - id: city_planning_office
+    name: City Planning Office
+    organization: City of Tunis (simulated)
+    type: consumer
+    membership: member
+    roles: [public_authority]
+    country: TN
+
+  - id: mobility_startup_x
+    name: Mobility Startup X
+    organization: Private company (simulated)
+    type: consumer
+    membership: guest
+    roles: [commercial]
+    country: FR
