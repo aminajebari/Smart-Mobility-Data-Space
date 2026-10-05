@@ -1,0 +1,11 @@
+numpy
+scikit-learn
+skl2onnx
+onnx
+onnxruntime
+fastapi
+uvicorn
+pydantic
+httpx
+pyyaml
+pytest

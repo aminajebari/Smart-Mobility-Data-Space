@@ -1,0 +1,5 @@
+seeds:
+  traffic_sensor_1: 42
+  bus_line_12: 43
+  parking_lot_5: 44
+  bikes_zone_a: 45
