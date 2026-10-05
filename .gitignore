@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Runtime state (never commit generated databases / logs)
+*.db
+*.sqlite3
+runtime/
+*.log
+
+# Node / dashboard
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
