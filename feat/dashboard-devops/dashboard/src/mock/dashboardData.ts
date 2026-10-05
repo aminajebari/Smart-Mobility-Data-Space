@@ -1,6 +1,7 @@
 import type { DashboardData } from '../types/dashboard'
 
 export const mockDashboardData: DashboardData = {
+  mode: 'mock',
   updatedAt: '2026-09-15T08:42:00+01:00',
   providers: [
     { id: 'bus', name: 'Tunis Bus Network', type: 'Public transit', status: 'connected', lastSync: '12 sec ago', icon: 'bus' },
@@ -25,8 +26,8 @@ export const mockDashboardData: DashboardData = {
   traffic: [
     { time: '06:00', density: 24, speed: 48 }, { time: '06:30', density: 30, speed: 46 },
     { time: '07:00', density: 41, speed: 41 }, { time: '07:30', density: 55, speed: 36 },
-    { time: '08:00', density: 72, speed: 29 }, { time: '08:30', density: 88, speed: 19 },
-    { time: '09:00', density: 92, speed: 16 }, { time: '09:30', density: 81, speed: 23 },
+    { time: '08:00', density: 72, speed: 29, incident: true }, { time: '08:30', density: 88, speed: 19, incident: true },
+    { time: '09:00', density: 92, speed: 16, incident: true }, { time: '09:30', density: 81, speed: 23, incident: true },
     { time: '10:00', density: 68, speed: 30 }, { time: '10:30', density: 57, speed: 35 },
     { time: '11:00', density: 52, speed: 38 }, { time: '11:30', density: 48, speed: 40 },
   ],

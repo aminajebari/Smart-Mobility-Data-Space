@@ -7,7 +7,7 @@ describe('dashboard smoke test', () => {
     render(<App />)
     expect(await screen.findByRole('heading', { name: 'Mobility Overview' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Network traffic & congestion' })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /congestion from 8 to 9:30/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /congestion from 08:00 to 09:30/i })).toBeInTheDocument()
     expect(screen.getByText('Tunis Bus Network')).toBeInTheDocument()
     expect(screen.getByText('Congestion probability')).toBeInTheDocument()
     expect(screen.getByText('Road flow telemetry')).toBeInTheDocument()

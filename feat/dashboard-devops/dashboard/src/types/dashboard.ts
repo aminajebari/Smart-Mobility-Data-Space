@@ -32,6 +32,7 @@ export interface TrafficPoint {
   time: string
   density: number
   speed: number
+  incident?: boolean
 }
 
 export interface EdgePrediction {
@@ -50,6 +51,13 @@ export interface DataExchange {
   dataset: string
   authorization: AuthorizationStatus
   timestamp: string
+  reason?: string
+}
+
+export interface ExchangeStats {
+  total: number
+  allow: number
+  deny: number
 }
 
 export interface DashboardData {
@@ -60,4 +68,6 @@ export interface DashboardData {
   predictions: EdgePrediction[]
   exchanges: DataExchange[]
   updatedAt: string
+  mode?: 'live' | 'mock'
+  exchangeStats?: ExchangeStats
 }
