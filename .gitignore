@@ -23,3 +23,6 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Live simulator output (committed sample files stay tracked)
+feat/data-simulation/data/

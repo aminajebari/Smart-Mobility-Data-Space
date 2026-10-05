@@ -2,6 +2,57 @@
 
 A modular Smart Mobility Data Space where mobility providers keep local control of their data, expose controlled APIs, apply Gaia-X-inspired sharing policies, run Edge AI locally, and visualize the complete system through a dashboard.
 
+## Quick start
+
+```bash
+docker compose up --build -d                        # everything; dashboard on http://localhost:8080
+docker compose --profile test run --rm smoke-test   # system smoke test (final integration scenario)
+```
+
+Without Docker (Python 3.12+):
+
+```bash
+pip install -r requirements-dev.txt
+python scripts/run_local.py          # 4 simulators + 4 provider APIs + data space + edge AI + dashboard API
+python scripts/smoke_test.py         # in another terminal
+cd feat/dashboard-devops/dashboard && npm install && VITE_USE_MOCK_DATA=false npm run dev
+```
+
+Kubernetes (Minikube / Kind): see [feat/dashboard-devops/README.md](feat/dashboard-devops/README.md#kubernetes-minikube).
+Demo script: [docs/DEMO.md](docs/DEMO.md).
+
+## Documentation
+
+| Document | Content |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | actors, use cases, component and sequence diagrams, Gaia-X mapping (FR) |
+| [docs/RAPPORT_FINAL.md](docs/RAPPORT_FINAL.md) | final report: results, Edge AI evaluation, validation, limits (FR) |
+| [docs/DEMO.md](docs/DEMO.md) | demo walkthrough and presentation outline (FR) |
+| [shared/API_CONTRACTS.md](shared/API_CONTRACTS.md) | ports, endpoints, datasets and policies shared by all modules |
+| `feat/*/README.md` | per-module documentation |
+
+## Repository layout
+
+```text
+feat/data-simulation/      Module 1 - simulators, scenario, schema
+feat/distributed-api/      Module 2 - provider API template (FastAPI)
+feat/data-space/           Module 3 - registry, catalogue, policies, contracts, audit
+feat/edge-ai/              Module 4 - training, ONNX model, edge inference service
+feat/dashboard-devops/     Module 5 - React dashboard + dashboard API
+shared/                    common schema and API contracts
+deploy/docker/, docker-compose.yml, deploy/k8s/
+scripts/                   run_local.py, smoke_test.py
+tests/integration/         in-process end-to-end test
+```
+
+| Service | Port | Swagger |
+|---|---|---|
+| Provider APIs (traffic, bus, parking, bikes) | 8001-8004 | `/docs` |
+| Data Space governance | 8010 | `/docs` |
+| Edge AI | 8020 | `/docs` |
+| Dashboard API | 8000 | `/docs` |
+| Dashboard | 8080 | - |
+
 ## Team & Branches
 
 | # | Member | Branch | Ownership |
