@@ -1,0 +1,131 @@
+{
+  "model_name": "congestion_rf",
+  "model_version": "1.0.0",
+  "task": "binary classification: congestion (incident) within the next 6 sensor records",
+  "algorithm": "RandomForestClassifier (60 trees, max depth 10)",
+  "edge_format": "ONNX (opset 17)",
+  "features": [
+    "speed",
+    "traffic_density",
+    "incident",
+    "speed_mean",
+    "speed_min",
+    "density_mean",
+    "density_max",
+    "density_slope",
+    "speed_slope",
+    "incident_ratio",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "window": 6,
+  "horizon": 6,
+  "threshold": 0.5,
+  "trained_at": "2026-10-05T15:08:20",
+  "training_source": "fixture",
+  "training_records": 51840,
+  "train_windows": 41463,
+  "test_windows": 10366,
+  "positive_rate": 0.1749,
+  "metrics": {
+    "random_forest": {
+      "accuracy": 0.8425,
+      "precision": 0.5537,
+      "recall": 0.8251,
+      "f1": 0.6627,
+      "confusion_matrix": [
+        [
+          7129,
+          1293
+        ],
+        [
+          340,
+          1604
+        ]
+      ],
+      "roc_auc": 0.8633
+    },
+    "random_forest_onnx": {
+      "accuracy": 0.8425,
+      "precision": 0.5537,
+      "recall": 0.8251,
+      "f1": 0.6627,
+      "confusion_matrix": [
+        [
+          7129,
+          1293
+        ],
+        [
+          340,
+          1604
+        ]
+      ],
+      "roc_auc": 0.8633
+    },
+    "logistic_regression": {
+      "accuracy": 0.834,
+      "precision": 0.5373,
+      "recall": 0.8266,
+      "f1": 0.6513,
+      "confusion_matrix": [
+        [
+          7038,
+          1384
+        ],
+        [
+          337,
+          1607
+        ]
+      ],
+      "roc_auc": 0.8541
+    },
+    "persistence_baseline": {
+      "accuracy": 0.866,
+      "precision": 0.7918,
+      "recall": 0.3873,
+      "f1": 0.5202,
+      "confusion_matrix": [
+        [
+          8224,
+          198
+        ],
+        [
+          1191,
+          753
+        ]
+      ]
+    }
+  },
+  "benchmark": {
+    "model_size_bytes": {
+      "sklearn_pickle": 2978752,
+      "onnx": 1263136
+    },
+    "single_prediction_latency_ms": {
+      "sklearn": {
+        "mean": 17.1905,
+        "p50": 16.5071,
+        "p95": 21.5751
+      },
+      "onnxruntime": {
+        "mean": 0.0848,
+        "p50": 0.073,
+        "p95": 0.1004
+      }
+    },
+    "batch_1000_latency_ms": {
+      "sklearn": {
+        "mean": 28.8947,
+        "p50": 28.6611,
+        "p95": 33.7307
+      },
+      "onnxruntime": {
+        "mean": 33.7867,
+        "p50": 33.2159,
+        "p95": 48.531
+      }
+    },
+    "onnx_max_probability_difference": 3.512716325593246e-07,
+    "hardware": "CPU, single process (win32)"
+  }
+}
