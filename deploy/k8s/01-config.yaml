@@ -1,0 +1,37 @@
+# Centralized, non-secret configuration shared by every service
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smds-config
+  namespace: smart-mobility
+data:
+  DATA_SPACE_URL: http://data-space:8010
+  TRAFFIC_API_URL: http://traffic-sensor-1:8001
+  BUS_API_URL: http://bus-line-12:8002
+  PARKING_API_URL: http://parking-lot-5:8003
+  BIKES_API_URL: http://bikes-zone-a:8004
+  EDGE_URL: http://edge-ai:8020
+  DASHBOARD_API_URL: http://dashboard-api:8000
+  PROVIDER_URLS: traffic_sensor_1=http://traffic-sensor-1:8001,bus_line_12=http://bus-line-12:8002,parking_lot_5=http://parking-lot-5:8003,bikes_zone_a=http://bikes-zone-a:8004
+  PARTNER_URLS: traffic_sensor_1=http://traffic-sensor-1:8001,bus_line_12=http://bus-line-12:8002,parking_lot_5=http://parking-lot-5:8003,bikes_zone_a=http://bikes-zone-a:8004
+  EDGE_POLL_SECONDS: "3"
+  CATALOGUE_REFRESH_SECONDS: "30"
+---
+# Demo credentials. Replace the values (or create the Secret out of band) for any real deployment.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: smds-secrets
+  namespace: smart-mobility
+type: Opaque
+stringData:
+  DATA_SPACE_SERVICE_TOKEN: dataspace-demo-token
+  API_KEYS: traffic-demo-key:traffic_sensor_1,bus-demo-key:bus_line_12,parking-demo-key:parking_lot_5,bikes-demo-key:bikes_zone_a,edge-demo-key:edge_node_1,dashboard-demo-key:dashboard_operator,city-demo-key:city_planning_office,startup-demo-key:mobility_startup_x
+  TRAFFIC_API_KEY: traffic-demo-key
+  BUS_API_KEY: bus-demo-key
+  PARKING_API_KEY: parking-demo-key
+  BIKES_API_KEY: bikes-demo-key
+  EDGE_API_KEY: edge-demo-key
+  DASHBOARD_API_KEY: dashboard-demo-key
+  CITY_API_KEY: city-demo-key
+  STARTUP_API_KEY: startup-demo-key

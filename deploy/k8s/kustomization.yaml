@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-namespace.yaml
+  - 01-config.yaml
+  - 10-data-space.yaml
+  - 20-providers.yaml
+  - 30-edge-ai.yaml
+  - 40-dashboard.yaml

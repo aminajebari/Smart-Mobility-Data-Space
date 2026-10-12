@@ -1,0 +1,282 @@
+# Provider pods: simulator (Module 1) + provider API (Module 2) share a pod-local volume.
+# Raw data never leaves the pod; other services only reach it through the API Service.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-sensor-1
+  namespace: smart-mobility
+  labels: {app: traffic-sensor-1, tier: provider}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: traffic-sensor-1}
+  template:
+    metadata:
+      labels: {app: traffic-sensor-1, tier: provider}
+    spec:
+      volumes:
+        - name: provider-data
+          emptyDir: {}
+      containers:
+        - name: simulator
+          image: smds/simulator:1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PROVIDER_ID, value: traffic_sensor_1}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/traffic_sensor_1}
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+        - name: api
+          image: smds/provider-api:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef: {name: smds-config}
+          env:
+            - {name: PROVIDER_ID, value: traffic_sensor_1}
+            - {name: PROVIDER_API_PORT, value: "8001"}
+            - {name: PUBLIC_URL, value: "http://traffic-sensor-1:8001"}
+            - name: DATA_SPACE_SERVICE_TOKEN
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: DATA_SPACE_SERVICE_TOKEN}}
+            - name: API_KEYS
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: API_KEYS}}
+            - name: PROVIDER_API_KEY
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: TRAFFIC_API_KEY}}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/traffic_sensor_1}
+          readinessProbe:
+            httpGet: {path: /health, port: 8001}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8001}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traffic-sensor-1
+  namespace: smart-mobility
+spec:
+  selector: {app: traffic-sensor-1}
+  ports:
+    - port: 8001
+      targetPort: 8001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bus-line-12
+  namespace: smart-mobility
+  labels: {app: bus-line-12, tier: provider}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: bus-line-12}
+  template:
+    metadata:
+      labels: {app: bus-line-12, tier: provider}
+    spec:
+      volumes:
+        - name: provider-data
+          emptyDir: {}
+      containers:
+        - name: simulator
+          image: smds/simulator:1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PROVIDER_ID, value: bus_line_12}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/bus_line_12}
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+        - name: api
+          image: smds/provider-api:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8002
+          envFrom:
+            - configMapRef: {name: smds-config}
+          env:
+            - {name: PROVIDER_ID, value: bus_line_12}
+            - {name: PROVIDER_API_PORT, value: "8002"}
+            - {name: PUBLIC_URL, value: "http://bus-line-12:8002"}
+            - name: DATA_SPACE_SERVICE_TOKEN
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: DATA_SPACE_SERVICE_TOKEN}}
+            - name: API_KEYS
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: API_KEYS}}
+            - name: PROVIDER_API_KEY
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: BUS_API_KEY}}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/bus_line_12}
+          readinessProbe:
+            httpGet: {path: /health, port: 8002}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8002}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bus-line-12
+  namespace: smart-mobility
+spec:
+  selector: {app: bus-line-12}
+  ports:
+    - port: 8002
+      targetPort: 8002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parking-lot-5
+  namespace: smart-mobility
+  labels: {app: parking-lot-5, tier: provider}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: parking-lot-5}
+  template:
+    metadata:
+      labels: {app: parking-lot-5, tier: provider}
+    spec:
+      volumes:
+        - name: provider-data
+          emptyDir: {}
+      containers:
+        - name: simulator
+          image: smds/simulator:1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PROVIDER_ID, value: parking_lot_5}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/parking_lot_5}
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+        - name: api
+          image: smds/provider-api:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8003
+          envFrom:
+            - configMapRef: {name: smds-config}
+          env:
+            - {name: PROVIDER_ID, value: parking_lot_5}
+            - {name: PROVIDER_API_PORT, value: "8003"}
+            - {name: PUBLIC_URL, value: "http://parking-lot-5:8003"}
+            - name: DATA_SPACE_SERVICE_TOKEN
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: DATA_SPACE_SERVICE_TOKEN}}
+            - name: API_KEYS
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: API_KEYS}}
+            - name: PROVIDER_API_KEY
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: PARKING_API_KEY}}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/parking_lot_5}
+          readinessProbe:
+            httpGet: {path: /health, port: 8003}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8003}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: parking-lot-5
+  namespace: smart-mobility
+spec:
+  selector: {app: parking-lot-5}
+  ports:
+    - port: 8003
+      targetPort: 8003
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bikes-zone-a
+  namespace: smart-mobility
+  labels: {app: bikes-zone-a, tier: provider}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: bikes-zone-a}
+  template:
+    metadata:
+      labels: {app: bikes-zone-a, tier: provider}
+    spec:
+      volumes:
+        - name: provider-data
+          emptyDir: {}
+      containers:
+        - name: simulator
+          image: smds/simulator:1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PROVIDER_ID, value: bikes_zone_a}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/bikes_zone_a}
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+        - name: api
+          image: smds/provider-api:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8004
+          envFrom:
+            - configMapRef: {name: smds-config}
+          env:
+            - {name: PROVIDER_ID, value: bikes_zone_a}
+            - {name: PROVIDER_API_PORT, value: "8004"}
+            - {name: PUBLIC_URL, value: "http://bikes-zone-a:8004"}
+            - name: DATA_SPACE_SERVICE_TOKEN
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: DATA_SPACE_SERVICE_TOKEN}}
+            - name: API_KEYS
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: API_KEYS}}
+            - name: PROVIDER_API_KEY
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: BIKES_API_KEY}}
+          volumeMounts:
+            - {name: provider-data, mountPath: /app/data-simulation/data/bikes_zone_a}
+          readinessProbe:
+            httpGet: {path: /health, port: 8004}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8004}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bikes-zone-a
+  namespace: smart-mobility
+spec:
+  selector: {app: bikes-zone-a}
+  ports:
+    - port: 8004
+      targetPort: 8004

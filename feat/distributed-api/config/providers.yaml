@@ -1,0 +1,57 @@
+# Datasets served by each provider API instance (one instance per provider,
+# selected with the PROVIDER_ID environment variable).
+#
+# source: simulation -> raw records read through Module 1 (access/local_data_api.py)
+#         published  -> results pushed with POST /publish by an authorized publisher
+#         none       -> declared in the catalogue but never served (e.g. denied policy)
+# The usage policy of each dataset lives in the Data Space catalogue (Module 3).
+
+providers:
+  traffic_sensor_1:
+    name: Urban Traffic Sensors
+    type: traffic_sensor
+    location: [36.8065, 10.1815]
+    datasets:
+      traffic_sensor_1.traffic_flow:
+        source: simulation
+        title: Road traffic flow telemetry
+        tags: [traffic, speed, density, incident]
+      traffic_sensor_1.congestion_forecast:
+        source: published
+        publishers: [edge_node_1]
+        title: Edge AI congestion forecast
+        tags: [traffic, prediction, edge-ai, congestion]
+
+  bus_line_12:
+    name: Tunis Bus Network - Line 12
+    type: public_transport
+    location: [36.8100, 10.1850]
+    datasets:
+      bus_line_12.vehicle_status:
+        source: simulation
+        title: Bus line 12 position and delay
+        tags: [public-transport, bus, delay, schedule]
+      bus_line_12.passenger_counts:
+        source: none
+        title: Passenger boarding counts
+        tags: [public-transport, passengers]
+
+  parking_lot_5:
+    name: Smart Parking Lot 5
+    type: smart_parking
+    location: [36.8000, 10.1800]
+    datasets:
+      parking_lot_5.occupancy:
+        source: simulation
+        title: Parking lot 5 occupancy
+        tags: [parking, occupancy]
+
+  bikes_zone_a:
+    name: Shared Bikes - Zone A
+    type: shared_mobility
+    location: [36.8050, 10.1830]
+    datasets:
+      bikes_zone_a.fleet_status:
+        source: simulation
+        title: Shared bikes fleet status
+        tags: [micro-mobility, bikes, availability]

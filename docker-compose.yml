@@ -1,0 +1,168 @@
+# Smart Mobility Data Space - one-command local integration
+#
+#   cp .env.example .env        (optional: defaults are used otherwise)
+#   docker compose up --build -d
+#   open http://localhost:8080
+#
+#   docker compose --profile test run --rm smoke-test          # system smoke test
+#   docker compose stop traffic-simulator && docker compose --profile demo run --rm scenario
+#
+# Data sovereignty: each provider has its own private volume, shared only by its
+# simulator (writer) and its provider API (reader). No other service mounts it.
+
+x-provider-api: &provider-api
+  image: smds/provider-api:1.0
+  build: { context: ., dockerfile: deploy/docker/provider-api.Dockerfile }
+  restart: unless-stopped
+  depends_on:
+    data-space: { condition: service_healthy }
+
+x-simulator: &simulator
+  image: smds/simulator:1.0
+  build: { context: ., dockerfile: deploy/docker/simulator.Dockerfile }
+  restart: unless-stopped
+
+x-common-env: &common-env
+  DATA_SPACE_URL: http://data-space:8010
+  DATA_SPACE_SERVICE_TOKEN: ${DATA_SPACE_SERVICE_TOKEN:-dataspace-demo-token}
+  API_KEYS: ${API_KEYS:-traffic-demo-key:traffic_sensor_1,bus-demo-key:bus_line_12,parking-demo-key:parking_lot_5,bikes-demo-key:bikes_zone_a,edge-demo-key:edge_node_1,dashboard-demo-key:dashboard_operator,city-demo-key:city_planning_office,startup-demo-key:mobility_startup_x}
+  PARTNER_URLS: traffic_sensor_1=http://traffic-api:8001,bus_line_12=http://bus-api:8002,parking_lot_5=http://parking-api:8003,bikes_zone_a=http://bikes-api:8004
+
+services:
+  # -- Module 3: Data Space governance --------------------------------------------
+  data-space:
+    image: smds/data-space:1.0
+    build: { context: ., dockerfile: deploy/docker/data-space.Dockerfile }
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes: ["dataspace-db:/data"]
+    ports: ["${DATA_SPACE_PORT:-8010}:8010"]
+
+  # -- Module 1: provider simulators (raw data stays in each provider's volume) -----
+  traffic-simulator:
+    <<: *simulator
+    environment: { PROVIDER_ID: traffic_sensor_1 }
+    volumes: ["traffic-data:/app/data-simulation/data/traffic_sensor_1"]
+  bus-simulator:
+    <<: *simulator
+    environment: { PROVIDER_ID: bus_line_12 }
+    volumes: ["bus-data:/app/data-simulation/data/bus_line_12"]
+  parking-simulator:
+    <<: *simulator
+    environment: { PROVIDER_ID: parking_lot_5 }
+    volumes: ["parking-data:/app/data-simulation/data/parking_lot_5"]
+  bikes-simulator:
+    <<: *simulator
+    environment: { PROVIDER_ID: bikes_zone_a }
+    volumes: ["bikes-data:/app/data-simulation/data/bikes_zone_a"]
+
+  # -- Module 2: provider APIs (the only public access point to provider data) -----
+  traffic-api:
+    <<: *provider-api
+    environment:
+      <<: *common-env
+      PROVIDER_ID: traffic_sensor_1
+      PROVIDER_API_PORT: "8001"
+      PUBLIC_URL: http://traffic-api:8001
+      PROVIDER_API_KEY: ${TRAFFIC_API_KEY:-traffic-demo-key}
+    volumes: ["traffic-data:/app/data-simulation/data/traffic_sensor_1"]
+    ports: ["8001:8001"]
+  bus-api:
+    <<: *provider-api
+    environment:
+      <<: *common-env
+      PROVIDER_ID: bus_line_12
+      PROVIDER_API_PORT: "8002"
+      PUBLIC_URL: http://bus-api:8002
+      PROVIDER_API_KEY: ${BUS_API_KEY:-bus-demo-key}
+    volumes: ["bus-data:/app/data-simulation/data/bus_line_12"]
+    ports: ["8002:8002"]
+  parking-api:
+    <<: *provider-api
+    environment:
+      <<: *common-env
+      PROVIDER_ID: parking_lot_5
+      PROVIDER_API_PORT: "8003"
+      PUBLIC_URL: http://parking-api:8003
+      PROVIDER_API_KEY: ${PARKING_API_KEY:-parking-demo-key}
+    volumes: ["parking-data:/app/data-simulation/data/parking_lot_5"]
+    ports: ["8003:8003"]
+  bikes-api:
+    <<: *provider-api
+    environment:
+      <<: *common-env
+      PROVIDER_ID: bikes_zone_a
+      PROVIDER_API_PORT: "8004"
+      PUBLIC_URL: http://bikes-api:8004
+      PROVIDER_API_KEY: ${BIKES_API_KEY:-bikes-demo-key}
+    volumes: ["bikes-data:/app/data-simulation/data/bikes_zone_a"]
+    ports: ["8004:8004"]
+
+  # -- Module 4: Edge AI node ---------------------------------------------------------
+  edge-ai:
+    image: smds/edge-ai:1.0
+    build: { context: ., dockerfile: deploy/docker/edge-ai.Dockerfile }
+    restart: unless-stopped
+    environment:
+      DATA_SPACE_URL: http://data-space:8010
+      TRAFFIC_API_URL: http://traffic-api:8001
+      EDGE_API_KEY: ${EDGE_API_KEY:-edge-demo-key}
+      EDGE_POLL_SECONDS: "3"
+    depends_on:
+      traffic-api: { condition: service_healthy }
+    ports: ["${EDGE_PORT:-8020}:8020"]
+
+  # -- Module 5: dashboard ---------------------------------------------------------------
+  dashboard-api:
+    image: smds/dashboard-api:1.0
+    build: { context: ., dockerfile: deploy/docker/dashboard-api.Dockerfile }
+    restart: unless-stopped
+    environment:
+      DATA_SPACE_URL: http://data-space:8010
+      EDGE_URL: http://edge-ai:8020
+      PROVIDER_URLS: traffic_sensor_1=http://traffic-api:8001,bus_line_12=http://bus-api:8002,parking_lot_5=http://parking-api:8003,bikes_zone_a=http://bikes-api:8004
+      DASHBOARD_API_KEY: ${DASHBOARD_API_KEY:-dashboard-demo-key}
+    depends_on:
+      data-space: { condition: service_healthy }
+      edge-ai: { condition: service_started }
+    ports: ["${DASHBOARD_API_PORT:-8000}:8000"]
+
+  dashboard:
+    image: smds/dashboard:1.0
+    build: { context: ., dockerfile: deploy/docker/dashboard.Dockerfile }
+    restart: unless-stopped
+    environment:
+      DASHBOARD_API_UPSTREAM: http://dashboard-api:8000
+    depends_on:
+      dashboard-api: { condition: service_healthy }
+    ports: ["${DASHBOARD_PORT:-8080}:80"]
+
+  # -- On-demand tools ---------------------------------------------------------------------
+  scenario:
+    <<: *simulator
+    profiles: ["demo"]
+    restart: "no"
+    command: ["python", "scenario/scenario_generator.py"]
+    volumes: ["traffic-data:/app/data-simulation/data/traffic_sensor_1"]
+
+  smoke-test:
+    image: smds/dashboard-api:1.0
+    profiles: ["test"]
+    restart: "no"
+    command: ["python", "/app/scripts/smoke_test.py", "--timeout", "120"]
+    environment:
+      TRAFFIC_API_URL: http://traffic-api:8001
+      BUS_API_URL: http://bus-api:8002
+      PARKING_API_URL: http://parking-api:8003
+      BIKES_API_URL: http://bikes-api:8004
+      DATA_SPACE_URL: http://data-space:8010
+      EDGE_URL: http://edge-ai:8020
+      DASHBOARD_API_URL: http://dashboard-api:8000
+
+volumes:
+  dataspace-db:
+  traffic-data:
+  bus-data:
+  parking-data:
+  bikes-data:

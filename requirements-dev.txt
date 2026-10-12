@@ -1,0 +1,6 @@
+# Everything needed to run all modules, tests and scripts/run_local.py on one machine
+-r feat/data-simulation/requirements.txt
+-r feat/distributed-api/requirements.txt
+-r feat/data-space/requirements.txt
+-r feat/edge-ai/requirements.txt
+-r feat/dashboard-devops/dashboard-api/requirements.txt

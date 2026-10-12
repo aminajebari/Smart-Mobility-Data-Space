@@ -1,0 +1,9 @@
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/dist
+**/runtime
+feat/edge-ai/data
+feat/edge-ai/models/*.pkl
+.git
+.env

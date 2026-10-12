@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["provider_id", "timestamp", "latitude", "longitude"],
+  "properties": {
+    "provider_id": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "latitude": {"type": "number"},
+    "longitude": {"type": "number"},
+    "speed": {"type": "number", "minimum": 0},
+    "traffic_density": {"type": "number", "minimum": 0, "maximum": 1},
+    "incident": {"type": "boolean"},
+    "occupancy": {"type": "number", "minimum": 0, "maximum": 1},
+    "route_id": {"type": "string"},
+    "delay_min": {"type": "number"},
+    "battery_level": {"type": "number", "minimum": 0, "maximum": 100},
+    "status": {"type": "string"}
+  }
+}
+
+
+

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-ai
+  namespace: smart-mobility
+  labels: {app: edge-ai, tier: edge}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: edge-ai}
+  template:
+    metadata:
+      labels: {app: edge-ai, tier: edge}
+    spec:
+      containers:
+        - name: edge-ai
+          image: smds/edge-ai:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8020
+          envFrom:
+            - configMapRef: {name: smds-config}
+          env:
+            - name: EDGE_API_KEY
+              valueFrom: {secretKeyRef: {name: smds-secrets, key: EDGE_API_KEY}}
+          readinessProbe:
+            httpGet: {path: /health, port: 8020}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8020}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 384Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edge-ai
+  namespace: smart-mobility
+spec:
+  selector: {app: edge-ai}
+  ports:
+    - port: 8020
+      targetPort: 8020

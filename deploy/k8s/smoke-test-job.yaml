@@ -1,0 +1,21 @@
+# System smoke test inside the cluster (not part of kustomization; run it after the stack is ready):
+#   kubectl apply -f deploy/k8s/smoke-test-job.yaml && kubectl logs -f job/smoke-test -n smart-mobility
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: smoke-test
+  namespace: smart-mobility
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke-test
+          image: smds/dashboard-api:1.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/app/scripts/smoke_test.py", "--timeout", "180"]
+          envFrom:
+            - configMapRef: {name: smds-config}
+            - secretRef: {name: smds-secrets}

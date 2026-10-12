@@ -1,0 +1,103 @@
+# Data Space catalogue: dataset self-descriptions (metadata only, never raw data)
+# and the usage policy each provider attaches to its offering.
+#
+# Policy types:
+#   public          - anyone, including non-members, may access
+#   partner_only    - any participant with membership "member"
+#   role_based      - members holding one of `allowed_roles`
+#   purpose_limited - members declaring one of `allowed_purposes`
+#   denied          - never shared outside the provider
+# Optional constraints on any type: allowed_roles, allowed_purposes,
+# requires_contract (a data-sharing agreement must exist before access).
+
+purposes:
+  - congestion_prediction
+  - traffic_management
+  - monitoring
+  - route_optimization
+  - research
+  - commercial
+
+datasets:
+  - id: traffic_sensor_1.traffic_flow
+    provider_id: traffic_sensor_1
+    title: Road traffic flow telemetry
+    description: Average speed, traffic density and incident flag from a fixed road sensor.
+    fields: [provider_id, timestamp, latitude, longitude, speed, traffic_density, incident]
+    update_frequency: 5s
+    tags: [traffic, speed, density, incident]
+    location: [36.8065, 10.1815]
+    policy:
+      type: purpose_limited
+      allowed_purposes: [congestion_prediction, traffic_management, monitoring, research]
+      requires_contract: true
+      retention_days: 7
+      redistribution: false
+
+  - id: traffic_sensor_1.congestion_forecast
+    provider_id: traffic_sensor_1
+    title: Edge AI congestion forecast
+    description: Congestion probability computed locally by the edge node next to the traffic sensor. Shares results, not raw data.
+    fields: [timestamp, congestion_probability, congested, traffic_level, model_version]
+    update_frequency: 10s
+    tags: [traffic, prediction, edge-ai, congestion]
+    location: [36.8065, 10.1815]
+    derived_from: [traffic_sensor_1.traffic_flow]
+    policy:
+      type: partner_only
+      requires_contract: false
+      retention_days: 30
+      redistribution: true
+
+  - id: bus_line_12.vehicle_status
+    provider_id: bus_line_12
+    title: Bus line 12 position and delay
+    description: Current stop position, route and delay of buses on line L12 (GTFS-inspired).
+    fields: [provider_id, timestamp, latitude, longitude, route_id, delay_min, incident]
+    update_frequency: 10s
+    tags: [public-transport, bus, delay, schedule]
+    location: [36.81, 10.185]
+    policy:
+      type: public
+      requires_contract: false
+      redistribution: true
+
+  - id: bus_line_12.passenger_counts
+    provider_id: bus_line_12
+    title: Passenger boarding counts
+    description: Boarding counts per stop. Personal-data adjacent, kept private by the operator.
+    fields: [timestamp, stop_id, boardings]
+    update_frequency: 60s
+    tags: [public-transport, passengers]
+    location: [36.81, 10.185]
+    policy:
+      type: denied
+      requires_contract: false
+
+  - id: parking_lot_5.occupancy
+    provider_id: parking_lot_5
+    title: Parking lot 5 occupancy
+    description: Occupancy ratio of a 120-space smart parking lot.
+    fields: [provider_id, timestamp, latitude, longitude, occupancy, incident]
+    update_frequency: 15s
+    tags: [parking, occupancy]
+    location: [36.8, 10.18]
+    policy:
+      type: public
+      requires_contract: false
+      redistribution: true
+
+  - id: bikes_zone_a.fleet_status
+    provider_id: bikes_zone_a
+    title: Shared bikes fleet status
+    description: Position, battery level and availability of shared bikes in zone A (MDS-inspired).
+    fields: [provider_id, timestamp, latitude, longitude, battery_level, status, incident]
+    update_frequency: 10s
+    tags: [micro-mobility, bikes, availability]
+    location: [36.805, 10.183]
+    policy:
+      type: role_based
+      allowed_roles: [micromobility_operator, transport_operator, public_authority, operator]
+      requires_contract: false
+      retention_days: 1
+      redistribution: false
