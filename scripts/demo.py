@@ -146,7 +146,9 @@ def main():
     step(0, "System overview", "7 independent services; each provider keeps its raw data locally.")
     check_services()
     data = dashboard()
-    print("  providers: " + ", ".join(f"{p['id']} ({p['status']})" for p in data["providers"]))
+    print("  providers: " + ", ".join(
+        f"{p['id']} ({'waiting for the scenario' if p['id'] == 'traffic_sensor_1' and p['status'] != 'connected' else p['status']})"
+        for p in data["providers"]))
 
     step("1-3", "Congestion scenario + Edge AI prediction",
          "The traffic simulator goes normal -> rising density -> incident -> congestion (about 70 s).\n"
@@ -156,8 +158,10 @@ def main():
     step(4, "A partner asks for the prediction", "City Planning Office (member) -> traffic API -> Data Space decides.")
     city = http.get(f"{URLS['traffic']}/data", params={"dataset_id": FORECAST, "purpose": "traffic_management", "limit": 1},
                     headers={"X-API-Key": KEYS["city"]})
+    audit_ids = []
     if city.status_code == 200:
         body = city.json()
+        audit_ids.append(body["authorization"]["audit_id"])
         record = body["records"][-1] if body["records"] else {}
         ok(f"HTTP 200 - {body['authorization']['reason']}")
         print(f"        result shared: congestion_probability={record.get('congestion_probability')}, "
@@ -170,10 +174,14 @@ def main():
     startup = http.get(f"{URLS['traffic']}/data", params={"dataset_id": FORECAST, "purpose": "commercial", "limit": 1},
                        headers={"X-API-Key": KEYS["startup"]})
     reason = startup.json().get("detail", {})
+    if isinstance(reason, dict) and "audit_id" in reason:
+        audit_ids.append(reason["audit_id"])
     deny(f"HTTP {startup.status_code} - {reason.get('reason', reason) if isinstance(reason, dict) else reason}")
 
     step(6, "Audit trail", "Every decision is written to the Data Space audit log.")
-    for entry in http.get(f"{URLS['data_space']}/audit", params={"limit": 2}).json():
+    # the edge node's own polling is audited too; show the two decisions made above
+    entries = [e for e in http.get(f"{URLS['data_space']}/audit", params={"limit": 200}).json() if e["id"] in audit_ids]
+    for entry in sorted(entries, key=lambda e: e["id"]):
         colour = GREEN if entry["decision"] == "allow" else RED
         print(f"  #{entry['id']:<5} {entry['timestamp']}  {entry['requester_id']:<22} {entry['dataset_id']:<38} "
               f"purpose={entry['purpose']:<18} policy={entry['policy_type']:<14} {colour}{entry['decision']}{RESET}")
@@ -198,7 +206,8 @@ def main():
     data = dashboard()
     print("  KPIs:        " + " | ".join(f"{k['label']}: {k['value']}" for k in data["kpis"]))
     print("  prediction:  " + " | ".join(f"{p['label']}: {p['value']}" for p in data["predictions"]))
-    for exchange in data["exchanges"][:3]:
+    # hide the edge node's routine polling so the partner exchanges stay visible
+    for exchange in [e for e in data["exchanges"] if not e["destination"].startswith("Edge AI")][:3]:
         colour = GREEN if exchange["authorization"] == "authorized" else RED
         print(f"  exchange:    {exchange['timestamp']} {exchange['source']} -> {exchange['destination']} "
               f"({exchange['dataset']}) {colour}{exchange['authorization']}{RESET}")
