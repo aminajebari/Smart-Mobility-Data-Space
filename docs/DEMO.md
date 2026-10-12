@@ -26,6 +26,12 @@ python scripts/run_local.py --demo        # sans Docker (terminal 1 : tout sauf 
 python scripts/demo.py                    # terminal 2 ; --bonus : extras souveraineté, --auto : sans pauses
 ```
 
+## Tableau de bord de présentation (HTML seul, sans installation)
+
+Double-cliquer `feat/dashboard-devops/demo-ui/index.html`. Si les services tournent, la page passe en mode
+**LIVE** et suit `scripts/demo.py` ; sinon elle rejoue le scénario en mode **SIMULATION** (boutons : scénario,
+demande autorisée, demande refusée, données `denied`, contrat). `index.html?sim&autoplay` lance directement le scénario.
+
 ## Déroulé (≈ 10 min) : les 7 étapes du scénario
 
 | # | Action | Ce qu'on montre |

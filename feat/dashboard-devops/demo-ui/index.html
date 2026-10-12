@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Mobility Data Space</title>
+<!--
+  Presentation dashboard - open this file directly in a browser (double-click), nothing to install.
+  LIVE mode:       if the stack runs (py scripts/run_local.py --demo), it reads http://127.0.0.1:8000/api/dashboard
+                   and updates while `py scripts/demo.py` drives the scenario.
+  SIMULATION mode: otherwise it replays the same 7-step scenario on its own, so the demo always works.
+  ?api=http://host:8000 overrides the dashboard API URL; ?sim forces simulation mode; ?sim&autoplay starts the scenario.
+-->
+<style>
+  :root {
+    --bg: #0b1220; --panel: #111a2e; --panel-2: #16223b; --line: #22314f;
+    --text: #e6edf7; --muted: #8a9bb8; --accent: #2dd4bf; --blue: #60a5fa;
+    --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444; --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px 24px 32px; }
+
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .logo { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+          background: linear-gradient(135deg, var(--accent), var(--blue)); font-size: 22px; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: .2px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1; }
+  .badge { padding: 6px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; letter-spacing: .6px;
+           display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .badge.live .dot { background: var(--ok); box-shadow: 0 0 0 4px rgba(34,197,94,.18); animation: pulse 1.6s infinite; }
+  .badge.sim .dot { background: var(--warn); }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } }
+  button { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+           padding: 8px 14px; border-radius: 10px; cursor: pointer; transition: .15s; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: linear-gradient(135deg, #0f766e, #1d4ed8); border: none; font-weight: 600; }
+
+  .grid { display: grid; gap: 16px; }
+  .kpis { grid-template-columns: repeat(5, 1fr); margin-bottom: 16px; }
+  .main { grid-template-columns: 2.1fr 1fr; margin-bottom: 16px; }
+  .bottom { grid-template-columns: 1fr 1fr 1.4fr; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+             display: flex; align-items: center; gap: 8px; }
+  .card h2 .right { margin-left: auto; text-transform: none; letter-spacing: 0; }
+
+  .kpi .label { color: var(--muted); font-size: 12px; }
+  .kpi .value { font-size: 26px; font-weight: 700; margin-top: 2px; }
+  .kpi .detail { font-size: 12px; color: var(--muted); }
+  .up { color: var(--bad); } .down { color: var(--ok); }
+
+  .chart-box { position: relative; height: 300px; }
+  canvas { width: 100%; height: 100%; display: block; }
+  .legend { display: flex; gap: 18px; font-size: 12px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  .gauge { width: 190px; height: 190px; margin: 4px auto 10px; border-radius: 50%; display: grid; place-items: center;
+           background: conic-gradient(var(--g-color, var(--ok)) calc(var(--p, 0) * 1%), var(--panel-2) 0); transition: .6s; }
+  .gauge-inner { width: 150px; height: 150px; border-radius: 50%; background: var(--panel); display: grid; place-items: center; text-align: center; }
+  .gauge-val { font-size: 40px; font-weight: 800; }
+  .gauge-lbl { font-size: 12px; color: var(--muted); margin-top: -6px; }
+  .pred-row { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .pred-row span:first-child { color: var(--muted); }
+  .alert { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; display: none; }
+  .alert.show { display: block; }
+  .alert.warn { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.45); color: #fcd34d; }
+  .alert.good { background: rgba(45,212,191,.1); border: 1px solid rgba(45,212,191,.45); color: #99f6e4; }
+
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--panel-2); border-radius: 10px; font-size: 14px; }
+  .row .meta { color: var(--muted); font-size: 12px; margin-left: auto; text-align: right; }
+  .status { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .s-ok { background: var(--ok); } .s-warn { background: var(--warn); } .s-bad { background: var(--bad); }
+
+  .phases { display: flex; gap: 6px; margin: 4px 0 12px; }
+  .phase { flex: 1; text-align: center; font-size: 12px; padding: 7px 4px; border-radius: 8px; background: var(--panel-2);
+           color: var(--muted); border: 1px solid transparent; transition: .3s; }
+  .phase.active { color: var(--text); border-color: var(--accent); background: rgba(45,212,191,.12); }
+  .phase.done { color: var(--text); }
+  .controls { display: flex; flex-direction: column; gap: 8px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr.new td { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: rgba(45,212,191,.18); } to { background: transparent; } }
+  .pill { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .4px; }
+  .pill.allow { background: rgba(34,197,94,.15); color: #86efac; }
+  .pill.deny { background: rgba(239,68,68,.15); color: #fca5a5; }
+  .reason { color: var(--muted); font-size: 12px; }
+  .table-box { max-height: 300px; overflow: auto; }
+
+  .chain { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .step { flex: 1; min-width: 120px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+          padding: 10px 12px; font-size: 12px; color: var(--muted); transition: .3s; }
+  .step b { display: block; font-size: 13px; color: var(--text); }
+  .step.on { border-color: var(--accent); color: var(--text); background: rgba(45,212,191,.08); }
+
+  @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(3, 1fr); } .main, .bottom { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .wrap { padding: 16px; } .kpis { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🚦</div>
+    <div>
+      <h1>Smart Mobility Data Space</h1>
+      <div class="sub">Sovereign data sharing · Gaia-X-inspired policies · Edge AI congestion prediction</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="sub" id="clock"></span>
+    <span class="badge" id="mode"><span class="dot"></span><span id="mode-text">CONNECTING…</span></span>
+    <button id="mode-btn">Switch mode</button>
+  </header>
+
+  <section class="grid kpis" id="kpis"></section>
+
+  <section class="grid main">
+    <div class="card">
+      <h2>Traffic sensor · traffic_sensor_1 <span class="right sub" id="chart-sub"></span></h2>
+      <div class="chart-box"><canvas id="chart"></canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--blue)"></i>Traffic density</span>
+        <span><i style="background:var(--warn)"></i>Edge AI congestion probability</span>
+        <span><i style="background:rgba(239,68,68,.35);height:10px"></i>Incident reported by the sensor</span>
+        <span><i style="background:none;border-top:2px dashed var(--muted);height:0"></i>Alert threshold 50%</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Edge AI prediction <span class="right sub">ONNX · runs on the edge node</span></h2>
+      <div class="gauge" id="gauge"><div class="gauge-inner"><div>
+        <div class="gauge-val" id="g-val">–</div><div class="gauge-lbl">congestion probability</div>
+      </div></div></div>
+      <div class="pred-row"><span>Predicted traffic level</span><b id="p-level">–</b></div>
+      <div class="pred-row"><span>Estimated travel time</span><b id="p-travel">–</b></div>
+      <div class="pred-row"><span>Horizon</span><b>next 6 sensor readings</b></div>
+      <div class="alert warn" id="early">⚠ Congestion predicted — the sensor has not reported any incident yet.</div>
+      <div class="alert good" id="lead"></div>
+    </div>
+  </section>
+
+  <section class="grid bottom">
+    <div class="card">
+      <h2>Providers & services</h2>
+      <div class="list" id="providers"></div>
+      <div class="list" id="services" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>Live scenario</h2>
+      <div class="phases" id="phases">
+        <div class="phase" data-p="normal">Normal</div><div class="phase" data-p="increasing">Rising density</div>
+        <div class="phase" data-p="incident">Incident</div><div class="phase" data-p="congestion">Congestion</div>
+      </div>
+      <div class="controls" id="sim-controls">
+        <button class="primary" id="btn-scenario">▶ Start congestion scenario</button>
+        <button id="btn-city">🏛 City Planning Office requests the forecast</button>
+        <button id="btn-startup">🚀 Mobility Startup X requests the forecast</button>
+        <button id="btn-passengers">🚌 Request bus passenger counts</button>
+        <button id="btn-contract">📝 Bus operator negotiates a contract</button>
+      </div>
+      <div class="hint" id="live-hint" style="display:none">
+        Live mode: run <code>py scripts/demo.py</code> in a terminal — this page follows the real system.
+      </div>
+    </div>
+    <div class="card">
+      <h2>Data space exchanges & audit log <span class="right sub" id="ex-stats"></span></h2>
+      <div class="table-box">
+        <table>
+          <thead><tr><th>Time</th><th>Provider → Requester</th><th>Dataset · purpose</th><th>Decision</th></tr></thead>
+          <tbody id="exchanges"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="chain" id="chain">
+    <div class="step" data-s="1"><b>1 · Simulate</b>sensor data stays local</div>
+    <div class="step" data-s="2"><b>2 · Publish</b>provider REST API</div>
+    <div class="step" data-s="3"><b>3 · Predict</b>Edge AI (ONNX)</div>
+    <div class="step" data-s="4"><b>4 · Request</b>partner asks for data</div>
+    <div class="step" data-s="5"><b>5 · Authorize</b>Data Space policy</div>
+    <div class="step" data-s="6"><b>6 · Audit</b>every decision traced</div>
+    <div class="step" data-s="7"><b>7 · Visualize</b>this dashboard</div>
+  </section>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const API = (params.get("api") || "http://127.0.0.1:8000").replace(/\/$/, "");
+const $ = (id) => document.getElementById(id);
+const HISTORY = 40;
+
+const state = {
+  mode: null,            // "live" | "sim"
+  points: [],            // {time, density, speed, incident, p}
+  exchanges: [],
+  stats: { total: 0, allow: 0, deny: 0 },
+  earlyAt: null, leadShown: false,
+};
+
+/* ---------- rendering (shared by both modes) ---------- */
+const clean = (s) => String(s ?? "").replace(/Â·/g, "·");
+
+function renderKpis(kpis) {
+  $("kpis").innerHTML = kpis.map(k => `
+    <div class="card kpi"><div class="label">${clean(k.label)}</div>
+      <div class="value">${clean(k.value)}</div>
+      <div class="detail ${k.trend === "up" ? "up" : k.trend === "down" ? "down" : ""}">${clean(k.detail || "")}</div></div>`).join("");
+}
+
+function renderPrediction(p, level, travel) {
+  const pct = Math.round(p * 100);
+  const color = pct >= 70 ? "var(--bad)" : pct >= 40 ? "var(--warn)" : "var(--ok)";
+  $("gauge").style.setProperty("--p", pct);
+  $("gauge").style.setProperty("--g-color", color);
+  $("g-val").textContent = pct + "%";
+  $("g-val").style.color = color;
+  $("p-level").textContent = level;
+  $("p-travel").textContent = travel;
+}
+
+function renderProviders(providers, services) {
+  const cls = (s) => ["connected", "healthy"].includes(s) ? "s-ok" : ["degraded", "waiting"].includes(s) ? "s-warn" : "s-bad";
+  $("providers").innerHTML = providers.map(p => `
+    <div class="row"><span class="status ${cls(p.status)}"></span><div><b>${clean(p.name)}</b>
+      <div class="reason">${clean(p.type || p.id)}</div></div><span class="meta">${p.status}<br>${p.lastSync || ""}</span></div>`).join("");
+  $("services").innerHTML = services.filter(s => !s.id.includes("_")).map(s => `
+    <div class="row"><span class="status ${cls(s.status)}"></span>${clean(s.name)}
+      <span class="meta">${s.status}${s.latency != null ? " · " + s.latency + " ms" : ""}</span></div>`).join("");
+}
+
+let seenExchanges = new Set();
+function renderExchanges() {
+  $("exchanges").innerHTML = state.exchanges.slice(0, 30).map(e => {
+    const fresh = !seenExchanges.has(e.id);
+    return `<tr class="${fresh ? "new" : ""}"><td>${e.timestamp}</td>
+      <td>${clean(e.source)} → <b>${clean(e.destination)}</b></td>
+      <td>${clean(e.dataset)}<div class="reason">${clean(e.reason || "")}</div></td>
+      <td><span class="pill ${e.authorization === "authorized" ? "allow" : "deny"}">${e.authorization === "authorized" ? "ALLOW" : "DENY"}</span></td></tr>`;
+  }).join("");
+  state.exchanges.forEach(e => seenExchanges.add(e.id));
+  $("ex-stats").textContent = `${state.stats.total} decisions · ${state.stats.allow} allowed · ${state.stats.deny} denied`;
+}
+
+function setPhase(name) {
+  const order = ["normal", "increasing", "incident", "congestion"];
+  document.querySelectorAll(".phase").forEach(el => {
+    const i = order.indexOf(el.dataset.p), cur = order.indexOf(name);
+    el.classList.toggle("active", i === cur);
+    el.classList.toggle("done", cur > i);
+  });
+}
+
+function lightSteps(...steps) {
+  document.querySelectorAll(".step").forEach(el => el.classList.toggle("on", steps.includes(+el.dataset.s)));
+}
+
+/* early warning: probability >= 50% while no incident is reported, then measure the lead time */
+function trackEarlyWarning(p, incident) {
+  if (p >= 0.5 && !incident && state.earlyAt === null) {
+    state.earlyAt = Date.now();
+    $("early").classList.add("show");
+  }
+  if (incident && state.earlyAt !== null && !state.leadShown) {
+    state.leadShown = true;
+    $("early").classList.remove("show");
+    $("lead").innerHTML = `✔ The edge model predicted this congestion <b>${Math.round((Date.now() - state.earlyAt) / 1000)} s before</b> the sensor reported the incident.`;
+    $("lead").classList.add("show");
+  }
+  if (!incident && p < 0.3) {   // back to normal: arm again for the next run
+    state.earlyAt = null; state.leadShown = false;
+    $("early").classList.remove("show");
+  }
+}
+
+/* ---------- chart (canvas, no library) ---------- */
+const canvas = $("chart"), ctx = canvas.getContext("2d");
+function drawChart() {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const pad = { l: 40, r: 12, t: 10, b: 24 }, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const pts = state.points, n = Math.max(pts.length, 2);
+  const x = (i) => pad.l + (pw * i) / (HISTORY - 1);
+  const y = (v) => pad.t + ph * (1 - v / 100);
+
+  ctx.font = "11px Segoe UI, sans-serif"; ctx.fillStyle = "#8a9bb8"; ctx.strokeStyle = "#22314f"; ctx.lineWidth = 1;
+  for (let v = 0; v <= 100; v += 25) {
+    ctx.beginPath(); ctx.moveTo(pad.l, y(v)); ctx.lineTo(w - pad.r, y(v)); ctx.stroke();
+    ctx.fillText(v + "%", 4, y(v) + 4);
+  }
+  // incident bands
+  ctx.fillStyle = "rgba(239,68,68,.18)";
+  pts.forEach((p, i) => { if (p.incident) ctx.fillRect(x(i) - pw / (HISTORY - 1) / 2, pad.t, pw / (HISTORY - 1), ph); });
+  // threshold
+  ctx.setLineDash([5, 5]); ctx.strokeStyle = "#8a9bb8"; ctx.beginPath(); ctx.moveTo(pad.l, y(50)); ctx.lineTo(w - pad.r, y(50)); ctx.stroke(); ctx.setLineDash([]);
+  if (pts.length < 2) { ctx.fillStyle = "#8a9bb8"; ctx.fillText("waiting for sensor data…", pad.l + 10, pad.t + 20); return; }
+
+  // density area
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ph);
+  grad.addColorStop(0, "rgba(96,165,250,.45)"); grad.addColorStop(1, "rgba(96,165,250,0)");
+  ctx.beginPath(); ctx.moveTo(x(0), y(0));
+  pts.forEach((p, i) => ctx.lineTo(x(i), y(p.density)));
+  ctx.lineTo(x(pts.length - 1), y(0)); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+  line(pts.map(p => p.density), "#60a5fa", 2);
+  line(pts.map(p => p.p == null ? null : p.p * 100), "#f59e0b", 3);
+
+  // time labels
+  ctx.fillStyle = "#8a9bb8";
+  [0, Math.floor((pts.length - 1) / 2), pts.length - 1].forEach(i => ctx.fillText(pts[i].time, Math.min(x(i), w - 60), h - 6));
+
+  function line(values, color, width) {
+    ctx.beginPath(); let started = false;
+    values.forEach((v, i) => { if (v == null || isNaN(v)) return; started ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v)); started = true; });
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = "round"; ctx.stroke();
+    const last = values.length - 1;
+    if (values[last] == null) return;
+    ctx.beginPath(); ctx.arc(x(last), y(values[last]), 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  }
+}
+window.addEventListener("resize", drawChart);
+
+function pushPoint(pt) {
+  state.points.push(pt);
+  if (state.points.length > HISTORY) state.points.shift();
+  drawChart();
+}
+
+/* ---------- LIVE mode: the real system through the dashboard API ---------- */
+let liveTimer = null, lastLiveTime = null;
+async function fetchDashboard(timeoutMs = 2500) {
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try { const r = await fetch(API + "/api/dashboard", { signal: ctrl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+
+async function liveTick() {
+  let d;
+  try { d = await fetchDashboard(); } catch { $("mode-text").textContent = "LIVE · API unreachable"; return; }
+  $("mode-text").textContent = "LIVE · " + API.replace("http://", "");
+  renderKpis(d.kpis);
+  const pred = Object.fromEntries(d.predictions.map(p => [p.id, p]));
+  const p = pred.probability && pred.probability.value.endsWith("%") ? parseFloat(pred.probability.value) / 100 : 0;
+  renderPrediction(p, pred.level ? pred.level.value : "–", pred.travel ? pred.travel.value : "–");
+  renderProviders(d.providers, d.services);
+  const last = d.traffic[d.traffic.length - 1];
+  if (last && lastLiveTime === null)   // first load: show recent history (predictions start from now)
+    d.traffic.slice(-HISTORY, -1).forEach(t => state.points.push({ ...t, p: null }));
+  if (last && last.time !== lastLiveTime) {
+    lastLiveTime = last.time;
+    pushPoint({ time: last.time, density: last.density, speed: last.speed, incident: last.incident, p });
+    trackEarlyWarning(p, last.incident);
+    setPhase(last.incident ? (last.density > 80 ? "congestion" : "incident") : p >= 0.5 ? "increasing" : "normal");
+  }
+  state.exchanges = d.exchanges.filter(e => !e.destination.startsWith("Edge AI")).concat(
+                    d.exchanges.filter(e => e.destination.startsWith("Edge AI")).slice(0, 3));
+  state.exchanges.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  state.stats = d.exchangeStats || state.stats;
+  renderExchanges();
+  $("chart-sub").textContent = "updated " + new Date().toLocaleTimeString();
+}
+
+function startLive() {
+  stopSim();
+  state.mode = "live"; state.points = []; lastLiveTime = null; seenExchanges = new Set();
+  $("mode").className = "badge live"; $("mode-btn").textContent = "Switch to simulation";
+  $("sim-controls").style.display = "none"; $("live-hint").style.display = "block";
+  lightSteps(1, 2, 3, 4, 5, 6, 7);
+  liveTick(); liveTimer = setInterval(liveTick, 2000);
+}
+
+/* ---------- SIMULATION mode: offline replay of the same scenario ---------- */
+let seed = 42;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const between = (a, b) => a + (b - a) * rnd();
+const TICK_MS = 2000;
+const PHASES = [   // same phases as feat/data-simulation/scenario/scenario_generator.py (one reading every 2 s, as the real generator)
+  { name: "normal", ticks: 10, speed: [45, 55], density: [0.10, 0.30], incident: false },
+  { name: "increasing", ticks: 10, speed: [25, 40], density: [0.40, 0.60], incident: false },
+  { name: "incident", ticks: 5, speed: [5, 15], density: [0.70, 0.85], incident: true },
+  { name: "congestion", ticks: 10, speed: [0, 8], density: [0.85, 1.00], incident: true },
+];
+const sim = { timer: null, phase: 0, tick: 0, running: false, auditId: 1000, p: 0.15, density: 0.2, speed: 50, incident: false,
+              contract: false };
+
+const PROVIDERS = [
+  { id: "traffic_sensor_1", name: "Urban Traffic Sensors", type: "Road telemetry" },
+  { id: "bus_line_12", name: "Tunis Bus Network - L12", type: "Public transit" },
+  { id: "parking_lot_5", name: "Smart Parking - Lot 5", type: "Parking occupancy" },
+  { id: "bikes_zone_a", name: "Shared Bikes - Zone A", type: "Micro-mobility" },
+];
+const SERVICES = [
+  { id: "data-space", name: "Data Space governance (Gaia-X)", status: "healthy" },
+  { id: "edge-ai", name: "Edge AI prediction", status: "healthy" },
+  { id: "dashboard-api", name: "Dashboard API", status: "healthy" },
+];
+
+/* stand-in for the ONNX model: reacts to the density trend, so it fires during "rising density" */
+function simModel(history) {
+  const recent = history.slice(-3);
+  const slope = recent.length > 1 ? (recent[recent.length - 1].density - recent[0].density) / recent.length : 0;
+  const last = recent[recent.length - 1] || { density: 20, incident: false };
+  const mean = recent.reduce((s, r) => s + r.density, 0) / Math.max(recent.length, 1);
+  let p = 0.1 + Math.max(0, mean - 30) * 0.03 + Math.max(0, slope) * 0.01;
+  if (last.incident) p = Math.max(p, 0.9);
+  return Math.min(0.99, Math.max(0.05, p + between(-0.03, 0.03)));
+}
+const levelOf = (p) => p >= 0.8 ? "Severe" : p >= 0.6 ? "Heavy" : p >= 0.4 ? "Moderate" : "Free Flow";
+const now = () => new Date().toLocaleTimeString("en-GB");
+
+function simRender() {
+  renderKpis([
+    { label: "Average speed", value: sim.speed.toFixed(1) + " km/h", trend: sim.speed < 30 ? "down" : "", detail: "traffic_sensor_1" },
+    { label: "Traffic density", value: Math.round(sim.density * 100) + "%", trend: sim.density > 0.6 ? "up" : "", detail: "road occupancy" },
+    { label: "Active incidents", value: sim.incident ? "1" : "0", trend: sim.incident ? "up" : "", detail: sim.incident ? "Avenue Habib Bourguiba" : "none" },
+    { label: "Parking occupancy", value: Math.round(55 + sim.density * 35) + "%", detail: "parking_lot_5" },
+    { label: "Active providers", value: "4 / 4", detail: "all connected" },
+  ]);
+  renderPrediction(sim.p, levelOf(sim.p), Math.min(60, Math.round(6 * 50 / Math.max(sim.speed, 5))) + " min");
+  renderProviders(PROVIDERS.map(p => ({ ...p, status: "connected", lastSync: "0 sec ago" })), SERVICES);
+}
+
+function addExchange(destination, dataset, allowed, reason, source = "Urban Traffic Sensors") {
+  state.exchanges.unshift({ id: "sim-" + (++sim.auditId), timestamp: now(), source, destination, dataset,
+                            authorization: allowed ? "authorized" : "denied", reason });
+  state.stats.total++; allowed ? state.stats.allow++ : state.stats.deny++;
+  renderExchanges();
+}
+
+function simTick() {
+  const ph = PHASES[sim.phase];
+  sim.speed = between(...ph.speed); sim.density = between(...ph.density); sim.incident = ph.incident;
+  const pt = { time: now(), density: sim.density * 100, speed: sim.speed, incident: sim.incident, p: 0 };
+  sim.p = simModel([...state.points, pt]); pt.p = sim.p;
+  pushPoint(pt);
+  trackEarlyWarning(sim.p, sim.incident);
+  setPhase(ph.name);
+  lightSteps(1, 2, 3, 7);
+  if (sim.tick % 6 === 0) addExchange("Edge AI Node 1", "Road traffic flow telemetry · congestion_prediction", true,
+                                     "policy 'purpose_limited' satisfied; contract active");
+  simRender();
+  if (++sim.tick >= ph.ticks) { sim.tick = 0; sim.phase++; }
+  if (sim.phase >= PHASES.length) { sim.phase = PHASES.length - 1; sim.tick = 0; endScenario(); }
+}
+
+function idleTick() {   // before/after the scenario: calm traffic
+  sim.speed = between(45, 55); sim.density = between(0.12, 0.28); sim.incident = false;
+  const pt = { time: now(), density: sim.density * 100, speed: sim.speed, incident: false, p: 0 };
+  sim.p = simModel([...state.points, pt]); pt.p = sim.p;
+  pushPoint(pt); trackEarlyWarning(sim.p, false); simRender();
+}
+
+function startScenario() {
+  clearInterval(sim.timer); sim.phase = 0; sim.tick = 0; sim.running = true;
+  state.earlyAt = null; state.leadShown = false; $("lead").classList.remove("show");
+  $("btn-scenario").disabled = true; $("btn-scenario").textContent = "Scenario running…";
+  sim.timer = setInterval(simTick, TICK_MS);
+}
+function endScenario() {
+  clearInterval(sim.timer); sim.running = false;
+  $("btn-scenario").disabled = false; $("btn-scenario").textContent = "↻ Replay congestion scenario";
+  sim.timer = setInterval(simTick, TICK_MS);   // stay congested until replayed
+}
+
+function request(who) {
+  lightSteps(4, 5, 6, 7);
+  const forecast = "Edge AI congestion forecast · ";
+  if (who === "city") addExchange("City Planning Office", forecast + "traffic_management", true,
+                                  "policy 'partner_only' satisfied — prediction shared, raw data stays local");
+  if (who === "startup") addExchange("Mobility Startup X", forecast + "commercial", false,
+                                     "policy 'partner_only': requester has 'guest' membership, member required");
+  if (who === "passengers") addExchange("City Planning Office", "Passenger boarding counts · unspecified", false,
+                                        "policy 'denied': dataset is not shared outside the provider", "Tunis Bus Network - L12");
+  if (who === "contract") {
+    if (!sim.contract) {
+      addExchange("Tunis Bus Network - L12", "Road traffic flow telemetry · route_optimization", false,
+                  "purpose 'route_optimization' is not an allowed purpose for this dataset");
+      setTimeout(() => {
+        sim.contract = true;
+        addExchange("Tunis Bus Network - L12", "Road traffic flow telemetry · traffic_management", true,
+                    "contract ctr-682c680f4e signed; policy 'purpose_limited' satisfied");
+        $("btn-contract").textContent = "📝 Contract active — bus fetches traffic data";
+      }, 1500);
+    } else addExchange("Tunis Bus Network - L12", "Road traffic flow telemetry · traffic_management", true,
+                       "policy 'purpose_limited' satisfied; contract ctr-682c680f4e active");
+  }
+}
+
+function startSim() {
+  clearInterval(liveTimer);
+  state.mode = "sim"; state.points = []; state.exchanges = []; state.stats = { total: 0, allow: 0, deny: 0 }; seenExchanges = new Set();
+  $("mode").className = "badge sim"; $("mode-text").textContent = "SIMULATION · offline replay";
+  $("mode-btn").textContent = "Switch to live";
+  $("sim-controls").style.display = "flex"; $("live-hint").style.display = "none";
+  $("btn-scenario").disabled = false; $("btn-scenario").textContent = "▶ Start congestion scenario";
+  setPhase(null); lightSteps(1, 2, 7);
+  for (let i = 0; i < 12; i++) idleTick();
+  renderExchanges();
+  sim.timer = setInterval(idleTick, 1000);
+}
+function stopSim() { clearInterval(sim.timer); }
+
+$("btn-scenario").onclick = startScenario;
+$("btn-city").onclick = () => request("city");
+$("btn-startup").onclick = () => request("startup");
+$("btn-passengers").onclick = () => request("passengers");
+$("btn-contract").onclick = () => request("contract");
+$("mode-btn").onclick = () => state.mode === "live" ? startSim() : startLive();
+setInterval(() => $("clock").textContent = new Date().toLocaleString("en-GB"), 1000);
+
+/* start: live if the dashboard API answers, otherwise simulation */
+(async () => {
+  if (params.has("sim")) { startSim(); if (params.has("autoplay")) startScenario(); return; }
+  try { await fetchDashboard(1500); startLive(); } catch { startSim(); }
+})();
+</script>
+</body>
+</html>
