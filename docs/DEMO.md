@@ -15,6 +15,17 @@ Ouvrir dans le navigateur :
 Clés de démonstration : `city-demo-key` (urbanisme, member), `startup-demo-key` (startup, guest),
 `bus-demo-key` (opérateur de bus).
 
+## Démo guidée en une commande
+
+`scripts/demo.py` enchaîne les 7 étapes ci-dessous dans un terminal, avec une pause (Entrée) entre chaque étape :
+courbe densité / incident / probabilité prédite en direct, puis requêtes autorisée et refusée, audit et dashboard.
+
+```bash
+docker compose up --build -d && python scripts/demo.py --docker          # avec Docker
+python scripts/run_local.py --demo        # sans Docker (terminal 1 : tout sauf le simulateur de trafic)
+python scripts/demo.py                    # terminal 2 ; --bonus : extras souveraineté, --auto : sans pauses
+```
+
 ## Déroulé (≈ 10 min) : les 7 étapes du scénario
 
 | # | Action | Ce qu'on montre |

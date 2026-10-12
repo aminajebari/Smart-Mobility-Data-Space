@@ -2,6 +2,7 @@
 
     python scripts/run_local.py               # services + live simulators
     python scripts/run_local.py --no-sim      # services only (uses existing sample data)
+    python scripts/run_local.py --demo        # live simulators except traffic, driven by scripts/demo.py
 
 Ctrl+C stops everything. Logs go to runtime/logs/<service>.log.
 Requires the Python dependencies of every module (see requirements-dev.txt).
@@ -41,7 +42,7 @@ PROVIDER_KEYS = {"traffic_sensor_1": "TRAFFIC_API_KEY", "bus_line_12": "BUS_API_
                  "parking_lot_5": "PARKING_API_KEY", "bikes_zone_a": "BIKES_API_KEY"}
 
 
-def services(with_sim: bool) -> list[tuple[str, Path, list[str], dict, int | None]]:
+def services(sims: list[str]) -> list[tuple[str, Path, list[str], dict, int | None]]:
     uv = [sys.executable, "-m", "uvicorn"]
     provider_urls = ",".join(f"{p}=http://127.0.0.1:{port}" for p, port in PROVIDERS.items())
     common = {"DATA_SPACE_URL": "http://127.0.0.1:8010", "DATA_SPACE_SERVICE_TOKEN": SHARED["DATA_SPACE_SERVICE_TOKEN"]}
@@ -59,9 +60,8 @@ def services(with_sim: bool) -> list[tuple[str, Path, list[str], dict, int | Non
     result.append(("dashboard-api", DASH, uv + ["app.main:app", "--host", "127.0.0.1", "--port", "8000"], {
         **common, "EDGE_URL": "http://127.0.0.1:8020", "PROVIDER_URLS": provider_urls,
         "DASHBOARD_API_KEY": SHARED["DASHBOARD_API_KEY"]}, 8000))
-    if with_sim:
-        for pid in PROVIDERS:
-            result.append((f"sim-{pid}", SIM, [sys.executable, "cli.py", "start", "--provider", pid], {}, None))
+    for pid in sims:
+        result.append((f"sim-{pid}", SIM, [sys.executable, "cli.py", "start", "--provider", pid], {}, None))
     return result
 
 
@@ -73,16 +73,18 @@ def port_in_use(port: int) -> bool:
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--no-sim", action="store_true", help="do not start the live simulators")
+    parser.add_argument("--demo", action="store_true", help="leave the traffic simulator to scripts/demo.py")
     args = parser.parse_args()
 
-    busy = [port for *_, port in services(False) if port and port_in_use(port)]
+    busy = [port for *_, port in services([]) if port and port_in_use(port)]
     if busy:
         sys.exit(f"ports already in use: {busy} - is another stack still running?")
 
     logs = RUNTIME / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     procs = []
-    for name, cwd, cmd, env, port in services(not args.no_sim):
+    sims = [] if args.no_sim else [p for p in PROVIDERS if not (args.demo and p == "traffic_sensor_1")]
+    for name, cwd, cmd, env, port in services(sims):
         log_file = open(logs / f"{name}.log", "w", encoding="utf-8")
         procs.append((name, port, subprocess.Popen(cmd, cwd=cwd, env={**os.environ, **env, "PYTHONUNBUFFERED": "1"},
                                                    stdout=log_file, stderr=subprocess.STDOUT)))
